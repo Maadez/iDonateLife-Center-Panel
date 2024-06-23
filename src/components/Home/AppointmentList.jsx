@@ -63,9 +63,7 @@ function AppointmentsList() {
   return (
    
     <div style={{    background: '#9c88ff', width: '100%', minHeight: '100vh',height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '20px' }}>
-      <h2 className="text-2xl font-bold mb-6 text-center" style={{ background: 'linear-gradient(135deg, #5DADE2, #3498DB)', color: 'white', padding: '10px', borderRadius: '5px' }}>
-        Appointments
-      </h2>
+    
 
       <div className="flex justify-around mb-8" style={{ width: '80%' }}>
         <button

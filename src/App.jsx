@@ -7,17 +7,21 @@ import PrivateRoute from './private-route/Private-Route';
 import LoginPage from './components/Auth/LoginPage';
 import HomePage from './components/Home/HomePage';
 import AnalyticsPage from './components/Analytics/AnalyticsPage';
+import { auth } from './firebase'; 
 import UserInfo from './components/Home/UserInfo';
 import Navbar from './components/Home/Navbar'; // Adjust the path based on your file structure
 import SettingsPage from './components/Home/SettingsPage'; // Import the SettingsPage component
 
 
 function App() {
+
+  const isLoggedIn = !!auth.currentUser;
+
   return (
   
     <Router>
       <Routes>
-        <Route path="/" element={<LoginPage />} />
+        <Route path="/" element={isLoggedIn ? <Navigate to="/home" /> : <LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/center-info" element={<PrivateRoute />}>
           <Route path="" element={<NavbarWrapper><CenterInfoPage /></NavbarWrapper>} />

@@ -197,7 +197,9 @@ const LoginPage = () => {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      
+      const user = auth.currentUser;
+      const token = await user.getIdToken();
+      localStorage.setItem('token', token);
       navigate('/home');
     } catch (error) {
       setError(error.message);
