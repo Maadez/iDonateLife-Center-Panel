@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import Sidebar from '../Home/Sidebar'; // Adjust import path as per your project
-import { collection, getDocs } from 'firebase/firestore'; // Adjust Firebase imports based on your setup
+import { collection, getDocs, query, where } from 'firebase/firestore'; // Adjust Firebase imports based on your setup
 import { firestore } from '../../firebase'; // Adjust import path based on your Firebase setup
 import { MdCheckCircle, MdCancel, MdPerson, MdFilterList, MdSearch } from 'react-icons/md'; // Import icons from react-icons library
 
@@ -63,7 +63,7 @@ const EligibilityIcon = styled.span`
   font-size: 22px;
   margin-left: 0px;
   vertical-align: middle;
-  color: ${props => (props.eligible ? 'green' : 'red')};
+  color: ${props => (props.eligible === 'Eligible' ? 'green' : 'red')};
 `;
 
 const FiltersAndSearchContainer = styled.div`
@@ -145,9 +145,24 @@ const UserInfo = () => {
       try {
         const usersCollection = collection(firestore, 'users');
         const usersSnapshot = await getDocs(usersCollection);
-        const usersData = usersSnapshot.docs.map(doc => ({
-          ...doc.data(),
-          eligible: Math.random() < 0.5 ? 'Eligible' : 'Not Eligible',
+        const usersData = await Promise.all(usersSnapshot.docs.map(async doc => {
+          const userData = doc.data();
+          // Query donations collection to check eligibility
+          const donationsQuery = query(collection(firestore, 'donations'), where('userId', '==', userData.userId));
+          const donationsSnapshot = await getDocs(donationsQuery);
+          
+          if (donationsSnapshot.empty) {
+            // If no donations found, mark as not eligible
+            return { ...userData, eligible: 'Not Eligible' };
+          } else {
+            // Check if any active donation (isActive === true)
+            const activeDonation = donationsSnapshot.docs.find(donation => donation.data().isActive === true);
+            if (activeDonation) {
+              return { ...userData, eligible: 'Eligible' };
+            } else {
+              return { ...userData, eligible: 'Not Eligible' };
+            }
+          }
         }));
         setUsers(usersData);
         setFilteredUsers(usersData);
@@ -155,7 +170,7 @@ const UserInfo = () => {
         console.error('Error fetching users:', error);
       }
     };
-
+  
     fetchUsers();
   }, []);
 
@@ -323,7 +338,7 @@ const UserInfo = () => {
                 </TableCell>
                 <TableCell>{user.bloodGroup}</TableCell>
                 <TableCell>
-                  <EligibilityIcon eligible={user.eligible === 'Eligible'}>
+                  <EligibilityIcon eligible={user.eligible}>
                     {user.eligible === 'Eligible' ? (
                       <MdCheckCircle />
                     ) : (

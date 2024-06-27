@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
 import { auth, firestore } from '../../firebase';
 import { doc, getDoc } from "firebase/firestore";
 import styled from 'styled-components';
-import { CircularProgress, Typography } from '@mui/material';
+import { CircularProgress, Typography, Modal, Box, Button } from '@mui/material';
 import { motion } from 'framer-motion';
-import SettingsPage from '../Home/SettingsPage';
+
 const Background = styled.div`
   display: flex;
   justify-content: center;
@@ -158,12 +158,14 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  //const [storedEmail, setStoredEmail] =useState('');
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [isResetLoading, setIsResetLoading] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
 
   useEffect(() => {
-    
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      
       if (user) {
         try {
           const docRef = doc(firestore, "centers", user.uid);
@@ -171,8 +173,11 @@ const LoginPage = () => {
 
           if (centerDataSnapshot.exists) {
             const centerData = centerDataSnapshot.data();
-            console.log(centerData);
-            navigate('/home', { state: { centerData } });
+            if (centerData.verificationStatus === true) {
+              navigate('/home', { state: { centerData } });
+            } else {
+              setShowVerificationDialog(true);
+            }
           } else {
             console.error('Center data not found for the logged-in user.');
           }
@@ -188,7 +193,6 @@ const LoginPage = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    // Check if email and password are not empty
     if (!email || !password) {
       setError('Email and Password are required.');
       return;
@@ -198,9 +202,18 @@ const LoginPage = () => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       const user = auth.currentUser;
-      const token = await user.getIdToken();
-      localStorage.setItem('token', token);
-      navigate('/home');
+
+      const docRef = doc(firestore, "centers", user.uid);
+      const centerDataSnapshot = await getDoc(docRef);
+      const centerData = centerDataSnapshot.exists ? centerDataSnapshot.data() : null;
+
+      if (centerData && centerData.verificationStatus === true) {
+        const token = await user.getIdToken();
+        localStorage.setItem('token', token);
+        navigate('/home', { state: { centerData } });
+      } else {
+        setShowVerificationDialog(true);
+      }
     } catch (error) {
       setError(error.message);
     } finally {
@@ -208,9 +221,32 @@ const LoginPage = () => {
     }
   };
 
+  const handlePasswordReset = async () => {
+    if (!resetEmail) {
+      setResetError('Email is required.');
+      return;
+    }
+
+    setIsResetLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, resetEmail);
+      alert('Password reset email sent!');
+      setShowResetModal(false);
+      setResetEmail('');
+    } catch (error) {
+      setResetError(error.message);
+    } finally {
+      setIsResetLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    navigate('/');
+  };
+
   return (
     <Background>
-
       <Sparkles>
         {createSparkles()}
       </Sparkles>
@@ -246,13 +282,64 @@ const LoginPage = () => {
             {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Log In'}
           </StyledButton>
         </form>
+        <NavTypography onClick={() => setShowResetModal(true)}>
+          Forgot Password?
+        </NavTypography>
         <NavTypography onClick={() => navigate('/signup')}>
           Don't have an account? Sign Up
         </NavTypography>
       </LoginForm>
+
+      <Modal open={showResetModal} onClose={() => setShowResetModal(false)}>
+        <Box
+          display="flex"
+          flexDirection="column"
+          justifyContent="center"
+          alignItems="center"
+          bgcolor="white"
+          p={4}
+          borderRadius={4}
+          boxShadow={3}
+          style={{ margin: '0 auto', maxWidth: 400 }}
+        >
+          <FormTypography variant="h6">Reset Password</FormTypography>
+          {resetError && <ErrorTypography>{resetError}</ErrorTypography>}
+          <StyledTextField
+            type="email"
+            id="resetEmail"
+            name="resetEmail"
+            value={resetEmail}
+            onChange={(e) => setResetEmail(e.target.value)}
+            required
+            placeholder="Enter your email"
+          />
+          <StyledButton onClick={handlePasswordReset} disabled={isResetLoading}>
+            {isResetLoading ? <CircularProgress size={24} color="inherit" /> : 'Send Reset Link'}
+          </StyledButton>
+        </Box>
+      </Modal>
+
+      <Modal open={showVerificationDialog} onClose={() => setShowVerificationDialog(false)}>
+        <Box
+          display="flex"
+          flexDirection="column"
+          justifyContent="center"
+          alignItems="center"
+          bgcolor="white"
+          p={4}
+          borderRadius={4}
+          boxShadow={3}
+          style={{ margin: '0 auto', maxWidth: 400 }}
+        >
+          <FormTypography variant="h6">Verification Pending</FormTypography>
+          <Typography variant="body1" style={{ margin: '20px 0' }}>
+            Your verification is pending. Stay tuned.
+          </Typography>
+         
+        </Box>
+      </Modal>
     </Background>
   );
-}
+};
 
 export default LoginPage;
-

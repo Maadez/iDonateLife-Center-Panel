@@ -11,7 +11,7 @@ import { auth } from './firebase';
 import UserInfo from './components/Home/UserInfo';
 import Navbar from './components/Home/Navbar'; // Adjust the path based on your file structure
 import SettingsPage from './components/Home/SettingsPage'; // Import the SettingsPage component
-
+import VerifyCenter from './components/Basic-Information/VerifyCenter';
 
 function App() {
 
@@ -24,9 +24,9 @@ function App() {
         <Route path="/" element={isLoggedIn ? <Navigate to="/home" /> : <LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/center-info" element={<PrivateRoute />}>
-          <Route path="" element={<NavbarWrapper><CenterInfoPage /></NavbarWrapper>} />
+        <Route path="" element={<NavbarWrapper><CenterInfoPage /></NavbarWrapper>} />
         </Route>
-        <Route path="/home" element={<PrivateRoute />}>
+        <Route path="/home" el ement={<PrivateRoute />}>
           <Route path="" element={<NavbarWrapper><HomePage /></NavbarWrapper>} />
         </Route>
         <Route path="/analytics" element={<PrivateRoute />}>
@@ -38,6 +38,7 @@ function App() {
         <Route path="/settings" element={<PrivateRoute />}>
           <Route path="" element={<NavbarWrapper><SettingsPage /></NavbarWrapper>} />
         </Route>
+        <Route path="/verify-center" element={<VerifyCenter />} />
       </Routes>
     </Router>
    

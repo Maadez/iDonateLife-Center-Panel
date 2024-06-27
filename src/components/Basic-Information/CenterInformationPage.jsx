@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { firestore, auth } from '../../firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import GeoFirePoint from '../../GeoPoint/geofirepoint';
+import axios from 'axios';
 import styled from 'styled-components';
-import { Typography } from '@mui/material';
+import { Typography, Dialog, DialogContent, DialogActions, Button } from '@mui/material';
 import { motion } from 'framer-motion';
+import sendEmailVerification from './sendEmailVerification';
 
 const Background = styled.div`
   display: flex;
@@ -132,6 +134,8 @@ const CenterInfoPage = () => {
   const [longitude, setLongitude] = useState(null);
   const [locationFetched, setLocationFetched] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [centerAddress, setCenterAddress] = useState('');
+  const [showDialog, setShowDialog] = useState(false);
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -145,16 +149,26 @@ const CenterInfoPage = () => {
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
           setLatitude(position.coords.latitude);
           setLongitude(position.coords.longitude);
           setLocationFetched(true);
+
+          try {
+            const response = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${position.coords.latitude},${position.coords.longitude}&key=AIzaSyBrSZwraxkArBnOFECPhpI9hBLWsVYgICM`);
+            if (response.data.results.length > 0) {
+              setCenterAddress(response.data.results[0].formatted_address);
+            } else {
+              setCenterAddress('Address not found');
+            }
+          } catch (error) {
+            console.error('Error fetching address:', error);
+            setCenterAddress('Error fetching address');
+          }
         },
         (error) => {
           console.error('Error getting location:', error);
-          
         }
-
       );
     } else {
       console.error('Geolocation is not supported by this browser.');
@@ -173,17 +187,32 @@ const CenterInfoPage = () => {
         throw new Error("User not authenticated");
       }
       const geofirepoint = new GeoFirePoint(latitude, longitude);
-      await setDoc(doc(firestore, 'centers', auth.currentUser.uid), {
+      const centerData = {
         centerName,
         centerEmail: userEmail,
         centerPhone,
         openingTime,
         closingTime,
         position: geofirepoint.data,
+        centerAddress,
         centerId: auth.currentUser.uid,
-      });
-      navigate('/home');
+        verificationStatus: false, // Add verification field
+      };
+
+      await setDoc(doc(firestore, 'centers', auth.currentUser.uid), centerData);
+      await sendEmailVerification(centerData);
+
+      setShowDialog(true);
+      setTimeout(() => {
+        setShowDialog(false);
+        navigate('/');
+      }, 5000);
     } catch (error) {
+      if (error.message.includes('Network')) {
+        setSubmitError('Network error. Please try again.');
+      } else {
+        setSubmitError('Error saving center info. Please try again.');
+      }
       console.error("Error saving center info:", error.message);
     }
   };
@@ -240,6 +269,15 @@ const CenterInfoPage = () => {
             required
             placeholder="Closing Time"
           />
+          <FieldLabel variant="body1">Center Address</FieldLabel>
+          <StyledTextField
+            type="text"
+            id="centerAddress"
+            name="centerAddress"
+            value={centerAddress}
+            readOnly
+            placeholder="Center Address"
+          />
           {submitError && <p style={{ color: 'red' }}>{submitError}</p>}
           <StyledButton
             type="button"
@@ -256,6 +294,17 @@ const CenterInfoPage = () => {
           </StyledButton>
         </form>
       </CenterForm>
+      <Dialog open={showDialog}>
+        <DialogContent>
+          <Typography variant="h6">Congratulations, your account is created successfully. Now wait for verification!</Typography>
+          <Typography variant="body1">You are redirecting to the login page...</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDialog(false)} color="primary">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Background>
   );
 }

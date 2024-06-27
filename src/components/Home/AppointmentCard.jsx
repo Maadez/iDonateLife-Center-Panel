@@ -1,56 +1,56 @@
 import React, { useState } from 'react';
-import { firestore } from '../../firebase'; // Adjust the import based on your firebase setup
+import { useNavigate } from 'react-router-dom';
+import { auth, firestore } from '../../firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import DatePicker from 'react-datepicker';
+import { Calendar, Clock } from 'lucide-react';
+import 'react-datepicker/dist/react-datepicker.css';
 
 export default function AppointmentCard({ appointment }) {
+  const [showDateTimePicker, setShowDateTimePicker] = useState(false);
+  const [newDateTime, setNewDateTime] = useState(new Date());
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [newStatusToUpdate, setNewStatusToUpdate] = useState('');
+  const [action, setAction] = useState('');
+
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    auth.signOut().then(() => {
+      navigate('/');
+    }).catch((error) => {
+      console.error('Error signing out:', error);
+    });
+  };
 
   const handleUpdateStatus = async () => {
     try {
       const appointmentDocRef = doc(firestore, 'appointments', appointment.appointmentId);
-      await updateDoc(appointmentDocRef, {
-        appointmentStatus: newStatusToUpdate,
-      });
-      console.log(`Appointment status updated to ${newStatusToUpdate}`);
-      setShowConfirmation(false); // Close confirmation dialog after status update
+      const updateData = action === 'approved' ? { appointmentStatus: action, appointmentDateTime: newDateTime } : { appointmentStatus: action };
+      
+      await updateDoc(appointmentDocRef, updateData);
+      console.log(`Appointment status updated to ${action}`);
+      setShowDateTimePicker(false);
+      setShowConfirmation(false);
     } catch (error) {
       console.error('Error updating appointment status:', error);
     }
   };
 
-  const handleCancelAppointment = async () => {
-    try {
-      const appointmentDocRef = doc(firestore, 'appointments', appointment.appointmentId);
-      await updateDoc(appointmentDocRef, {
-        appointmentStatus: 'cancelled', // Assuming 'cancelled' is the status for cancellation
-      });
-      console.log('Appointment canceled successfully');
-      setShowConfirmation(false); // Close confirmation dialog after cancellation
-    } catch (error) {
-      console.error('Error canceling appointment:', error);
-    }
-  };
-
   const handleStatusUpdateClick = (newStatus) => {
-    setNewStatusToUpdate(newStatus);
-    setShowConfirmation(true);
+    if (newStatus === 'approved' && appointment.appointmentStatus === 'pending') {
+      setShowDateTimePicker(true);
+    } else {
+      setAction(newStatus);
+      setShowConfirmation(true);
+    }
   };
 
   return (
     <li className="bg-white shadow-md rounded-lg p-6 border border-gray-200">
-      <p className="text-gray-600">
-        <strong>Address:</strong> {appointment.address || 'N/A'}
-      </p>
-      <p className="text-gray-600">
-        <strong>Case:</strong> {appointment.appointmentCase || 'N/A'}
-      </p>
-      <p className="text-gray-600">
-        <strong>Creator Name:</strong> {appointment.appointmentCreaterName || 'N/A'}
-      </p>
-      <p className="text-gray-600">
-        <strong>Creator Phone No:</strong> {appointment.appointmentCreaterPhoneNo || 'N/A'}
-      </p>
+      <p className="text-gray-600"><strong>Address:</strong> {appointment.address || 'N/A'}</p>
+      <p className="text-gray-600"><strong>Case:</strong> {appointment.appointmentCase || 'N/A'}</p>
+      <p className="text-gray-600"><strong>Creator Name:</strong> {appointment.appointmentCreaterName || 'N/A'}</p>
+      <p className="text-gray-600"><strong>Creator Phone No:</strong> {appointment.appointmentCreaterPhoneNo || 'N/A'}</p>
       <p className="text-gray-600">
         <strong>Date Time:</strong>{' '}
         {appointment.appointmentDateTime
@@ -73,15 +73,49 @@ export default function AppointmentCard({ appointment }) {
           {appointment.appointmentStatus || 'N/A'}
         </span>
       </p>
-      <p className="text-gray-600">
-        <strong>Type:</strong> {appointment.appointmentType || 'N/A'}
-      </p>
-      <p className="text-gray-600">
-        <strong>Blood Bags:</strong> {appointment.bloodBags || 'N/A'}
-      </p>
-      <p className="text-gray-600">
-        <strong>Blood Group:</strong> {appointment.bloodGroup || 'N/A'}
-      </p>
+      <p className="text-gray-600"><strong>Type:</strong> {appointment.appointmentType || 'N/A'}</p>
+      <p className="text-gray-600"><strong>Blood Bags:</strong> {appointment.bloodBags || 'N/A'}</p>
+      <p className="text-gray-600"><strong>Blood Group:</strong> {appointment.bloodGroup || 'N/A'}</p>
+
+      {showDateTimePicker && (
+        <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <div className="bg-white rounded-lg shadow-md p-6 max-w-sm w-full mx-auto">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Schedule Date and Time</h2>
+            <div className="relative mb-4">
+              <DatePicker
+                selected={newDateTime}
+                onChange={(date) => setNewDateTime(date)}
+                showTimeSelect
+                dateFormat="MMMM d, yyyy h:mm aa"
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 pl-10"
+                calendarClassName="bg-white shadow-lg rounded-md"
+              />
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            </div>
+            <div className="mb-4 flex items-center text-sm text-gray-600">
+              <Clock size={16} className="mr-2" />
+              <span>Current selection: {newDateTime.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowDateTimePicker(false)}
+                className="mr-2 px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setAction('approved');
+                  setShowConfirmation(true);
+                }}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-700"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showConfirmation && (
         <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
@@ -92,13 +126,13 @@ export default function AppointmentCard({ appointment }) {
                 onClick={() => setShowConfirmation(false)}
                 className="mr-2 px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400"
               >
-                Cancel
+                No
               </button>
               <button
                 onClick={handleUpdateStatus}
                 className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-700"
               >
-                Confirm
+                Yes
               </button>
             </div>
           </div>
