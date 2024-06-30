@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { auth, firestore } from '../../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { auth } from '../../firebase';
+import { doc, updateDoc, getDoc, getFirestore } from 'firebase/firestore';
 import DatePicker from 'react-datepicker';
 import { Calendar, Clock } from 'lucide-react';
 import 'react-datepicker/dist/react-datepicker.css';
+import axios from 'axios';
+
+const firestore = getFirestore();
 
 export default function AppointmentCard({ appointment }) {
   const [showDateTimePicker, setShowDateTimePicker] = useState(false);
@@ -25,14 +28,57 @@ export default function AppointmentCard({ appointment }) {
   const handleUpdateStatus = async () => {
     try {
       const appointmentDocRef = doc(firestore, 'appointments', appointment.appointmentId);
-      const updateData = action === 'approved' ? { appointmentStatus: action, appointmentDateTime: newDateTime } : { appointmentStatus: action };
-      
+      const updateData = action === 'approved' ? { appointmentStatus: action, appointmentDateTime: newDateTime, participantIsCompleted: action === 'completed' } : { appointmentStatus: action };
+
       await updateDoc(appointmentDocRef, updateData);
       console.log(`Appointment status updated to ${action}`);
       setShowDateTimePicker(false);
       setShowConfirmation(false);
+
+      // Send notification
+      await sendNotification(appointment.appointmentCreaterId, action);
     } catch (error) {
       console.error('Error updating appointment status:', error);
+    }
+  };
+
+  const sendNotification = async (userId, newStatus) => {
+    try {
+      const userDocRef = doc(firestore, 'users', userId);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        console.error('No such user!');
+        return;
+      }
+
+      const userData = userDoc.data();
+      const payload = {
+        to: userData.fcmToken,
+        priority: 'high',
+        notification: {
+          title: 'iDonate Life',
+          body: `Your appointment status has been changed to ${newStatus}`,
+        },
+        data: {
+          receiverId: userId,
+        },
+      };
+
+      const response = await axios.post('https://fcm.googleapis.com/fcm/send', payload, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `key=AAAAaFJxmek:APA91bHLjMjjx2mK_AHsdsRsVigrj8O8huEG5MB6QBxyTebMyZeSR58X9jQtUlq0Bd_3rM2bagmnhoHNBUGiLbN_i8JUfPDHBxfKWBK35RMWQm-nm3a3C11pV-4HV8mw1iW4Uk8kQjl7`,
+        },
+      });
+
+      if (response.status === 200) {
+        console.log('Notification sent successfully');
+      } else {
+        console.error('Failed to send notification:', response.data);
+      }
+    } catch (error) {
+      console.error('Error sending notification:', error);
     }
   };
 
@@ -159,7 +205,7 @@ export default function AppointmentCard({ appointment }) {
         <>
           <button
             onClick={() => handleStatusUpdateClick('inProgress')}
-            className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-700"
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-700"
           >
             Mark as In Progress
           </button>
@@ -175,7 +221,7 @@ export default function AppointmentCard({ appointment }) {
         <>
           <button
             onClick={() => handleStatusUpdateClick('completed')}
-            className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-700"
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-700"
           >
             Mark as Completed
           </button>

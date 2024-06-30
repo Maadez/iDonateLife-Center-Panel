@@ -133,6 +133,7 @@ const StyledTextField = styled.input`
 const FormTypography = styled(Typography)`
   margin-bottom: 20px;
   font-family: 'Roboto, Helvetica, Arial, sans-serif';
+  color: red;
 `;
 
 const NavTypography = styled(Typography)`
@@ -278,9 +279,12 @@ const LoginPage = () => {
             required
             placeholder="Password"
           />
+
+         
           <StyledButton type="submit" disabled={isLoading}>
             {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Log In'}
           </StyledButton>
+          
         </form>
         <NavTypography onClick={() => setShowResetModal(true)}>
           Forgot Password?

@@ -24,7 +24,7 @@ function App() {
         <Route path="/" element={isLoggedIn ? <Navigate to="/home" /> : <LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/center-info" element={<PrivateRoute />}>
-        <Route path="" element={<NavbarWrapper><CenterInfoPage /></NavbarWrapper>} />
+        <Route path="" element={<CenterInfoPage />} />
         </Route>
         <Route path="/home" el ement={<PrivateRoute />}>
           <Route path="" element={<NavbarWrapper><HomePage /></NavbarWrapper>} />

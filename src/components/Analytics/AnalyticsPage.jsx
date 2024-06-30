@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import { PieChart, Pie, Tooltip, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, Label } from 'recharts';
+import { PieChart, Pie, Tooltip, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, Label, BarChart, Bar } from 'recharts';
 import Sidebar from '../Home/Sidebar';
 import { firestore, collection, getDocs } from '../../firebase';
+
+
 
 const Container = styled.div`
   display: flex;
@@ -194,8 +196,10 @@ const AnalyticsPage = () => {
               <Legend />
             </PieChart>
           </CardContainer>
+
           <CardContainer>
             <h2 style={{ textAlign: 'center' }}>Blood Group Distribution</h2>
+            
             <BarChart width={500} height={400} data={bloodGroupData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name">
@@ -209,6 +213,8 @@ const AnalyticsPage = () => {
               <Bar dataKey="value" fill="transparent"/>
             </BarChart>
           </CardContainer>
+         
+
         </Row>
         <Row>
           <CardContainer>
